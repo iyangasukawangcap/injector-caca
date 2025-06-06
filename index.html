@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spaceman Crash Predictor</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+
+    body {
+      background: radial-gradient(circle at center, #0f0f0f 0%, #000000 100%);
+      color: #00fff7;
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 0.5em;
+    }
+
+    #multiplierDisplay {
+      font-size: 4em;
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+    }
+
+    #log {
+      margin-top: 20px;
+      max-width: 90vw;
+      max-height: 40vh;
+      overflow: auto;
+      background: #111;
+      border: 1px solid #00ffcc;
+      padding: 10px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      font-size: 0.9em;
+      color: #fff;
+    }
+
+    audio {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 Spaceman Crash Predictor</h1>
+  <div id="multiplierDisplay">--.--×</div>
+  <div id="log">Waiting for game data...</div>
+  <audio id="crashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-retro-jump-223.wav" preload="auto"></audio>
+
+  <script>
+    const log = document.getElementById('log');
+    const multiplierDisplay = document.getElementById('multiplierDisplay');
+    const crashSound = document.getElementById('crashSound');
+    const originalWebSocket = window.WebSocket;
+    const messages = [];
+
+    function updateMultiplierDisplay(mult) {
+      multiplierDisplay.textContent = `${mult.toFixed(2)}×`;
+    }
+
+    function playCrashSound() {
+      crashSound.currentTime = 0;
+      crashSound.play();
+    }
+
+    function simulateRandomMultiplier() {
+      const random = (Math.random() * 4 + 1).toFixed(3); // 1.000 to 5.000
+      const value = parseFloat(random);
+      updateMultiplierDisplay(value);
+      log.textContent = `🔮 Predicted Multiplier: ${value.toFixed(3)}×`;
+      if (value < 1.5) {
+        playCrashSound();
+      }
+    }
+
+    // Simulate multiplier every 10s for demo
+    setInterval(() => {
+      simulateRandomMultiplier();
+    }, 10000);
+
+    window.WebSocket = function (url, protocols) {
+      const ws = new originalWebSocket(url, protocols);
+
+      ws.addEventListener('message', (event) => {
+        try {
+          const data = event.data;
+          if (data.startsWith('{') || data.startsWith('[')) {
+            const parsed = JSON.parse(data);
+            const str = JSON.stringify(parsed).toLowerCase();
+            if (str.includes('multiplier') || str.includes('crash') || str.includes('result')) {
+              const entry = JSON.stringify(parsed, null, 2);
+              messages.push(entry);
+              if (messages.length > 10) messages.shift();
+              log.textContent = messages.join('\n----------------------\n');
+              if (str.includes('crash')) playCrashSound();
+            }
+          }
+        } catch (e) {
+          // ignore parse error
+        }
+      });
+
+      return ws;
+    };
+    window.WebSocket.prototype = originalWebSocket.prototype;
+
+    console.log('[Spaceman Predictor] Ready!');
+  </script>
+</body>
+</html>
